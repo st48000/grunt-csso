@@ -26,9 +26,17 @@
   "engines": {
     "node": "*"
   },
-  "dependencies": {},
+  "dependencies": {
+    "csso": "~1.3.4"
+  },
   "devDependencies": {
     "grunt": ">=0.3.7"
   },
-  "keywords": ["gruntplugin", "grunt.js", "csso", "minimizer", "optimizer"]
+  "keywords": [
+    "gruntplugin",
+    "grunt.js",
+    "csso",
+    "minimizer",
+    "optimizer"
+  ]
 }

@@ -1,51 +1,60 @@
 module.exports = function( grunt ) {
 
-    // Create a new multi task.
-    grunt.registerMultiTask( 'csso', 'This triggers the `csso` command.', function() {
+    // Install node modules.
+    var fs   = require('fs'),
+        zlib = require('zlib'),
+        csso = require('csso');
 
-        // Tell grunt this task is asynchronous.
-        var done = this.async(),
-            exec = require('child_process').exec,
-            command = "csso",
-            src = undefined,
-            dest = undefined,
-            restructure = this.data.restructure;
+    
+    // TASKS
+    // ==========================================================================
 
-        if ( this.data.src !== undefined ) {
-            src = grunt.template.process(this.data.src);
-        }
+    grunt.registerMultiTask( 'csso', 'Minification task with CSSO.', function() {
 
-        if ( this.data.dest !== undefined ) {
-            dest = grunt.template.process(this.data.dest);
-        }
-
-        if ( src !== undefined && dest !== undefined ) {
-            command += ' ' + src + ' ' + dest;
-        }
-        if ( src !== undefined && dest === undefined ) {
-            command += ' ' + src;
-        }
-        if ( restructure === false ) {
-            command += ' -off ';
-        }
-        if ( src === undefined && dest === undefined ) {
-            grunt.log.error();
-            grunt.log.write( 'CSSO `src` is undefined.\n' );
-            return false;
-        }
+        grunt.log.subhead('Optimizing with CSSO...');
         
-        function puts( error, stdout, stderr ) {
-            grunt.log.write( '\n\nCSSO output:\n' );
-            grunt.log.write( stdout );
-            if ( error !== null ) {
-                grunt.log.error( error );
-                done(false);
-            }
-            else {
-                done(true);
-            }
+        var inputPath  = this.file.src,
+            uncompSize = String(fs.statSync(inputPath).size).green,
+            outputPath = this.file.dest,
+            restructure = (this.data.restructure === false) ? false : true,
+            stuff = grunt.file.read(inputPath);
+
+        // Override if `src` only
+        if ( outputPath === undefined ) {
+            outputPath  = inputPath;
         }
-        exec( command, puts );
-        grunt.log.write( '`' + command + '` was initiated.' );
+
+        // Check restructure option
+        if (restructure) {
+            minified = csso.justDoIt(stuff);
+        } else {
+            minified = csso.justDoIt(stuff, true);
+        }
+
+        // Generate minified file
+        grunt.file.write(outputPath, minified);
+        grunt.helper('min_max_info', outputPath, uncompSize);
+        
+    });
+
+
+    // HELPERS
+    // ==========================================================================
+
+    // Return gzipped source.
+    grunt.registerHelper('gzip', function(path) {
+        var gzip = zlib.createGzip(),
+            input  = fs.createReadStream(path),
+            gzipped = input.pipe(gzip);
+        return path ? gzipped._chunkSize : '';
+    });
+
+    // Output some size info about a file.
+    grunt.registerHelper('min_max_info', function(min, max) {
+        var gzipSize = String(grunt.helper('gzip', min)).green,
+            compSize = String(fs.statSync(min).size).green;
+        grunt.log.writeln(' File "' + String(min).green　+ '" created.');
+        grunt.log.writeln(' Uncompressed size: ' + max + ' bytes.');
+        grunt.log.writeln(' Compressed size: ' + gzipSize + ' bytes gzipped (' + compSize + ' bytes minified).');
     });
 };
